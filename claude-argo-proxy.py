@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
+import argparse
 import asyncio
 import aiohttp
 import aiohttp.web
 
-LISTEN_PORT = 8083
 TARGET_HOST = "apps.inside.anl.gov"
 TUNNEL_HOST = "127.0.0.1"
-TARGET_PORT = 8082
 
 async def proxy_request(request):
     # Build target URL using tunnel host but with correct path
-    url = f"https://{TUNNEL_HOST}:{TARGET_PORT}{request.path_qs}"
+    url = f"https://{TUNNEL_HOST}:{request.app['target_port']}{request.path_qs}"
     
     # Copy headers, override Host
     headers = dict(request.headers)
@@ -47,9 +46,17 @@ async def proxy_request(request):
             print(f"ERROR: {request.method} {request.path} - {type(e).__name__}: {e}")
             return aiohttp.web.Response(status=500, text=str(e))
 
-app = aiohttp.web.Application()
-app.router.add_route("*", "/{path_info:.*}", proxy_request)
-
 if __name__ == "__main__":
-    print(f"Argo proxy listening on http://127.0.0.1:{LISTEN_PORT}")
-    aiohttp.web.run_app(app, host="127.0.0.1", port=LISTEN_PORT, print=None)
+    parser = argparse.ArgumentParser(description="Argo proxy for Claude Code")
+    parser.add_argument("--listen-port", type=int, required=True,
+                        help="Local port for proxy to listen on")
+    parser.add_argument("--target-port", type=int, required=True,
+                        help="Local SSH tunnel port to forward to")
+    args = parser.parse_args()
+
+    app = aiohttp.web.Application()
+    app["target_port"] = args.target_port
+    app.router.add_route("*", "/{path_info:.*}", proxy_request)
+
+    print(f"Argo proxy listening on http://127.0.0.1:{args.listen_port}")
+    aiohttp.web.run_app(app, host="127.0.0.1", port=args.listen_port, print=None)

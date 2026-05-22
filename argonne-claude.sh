@@ -68,7 +68,9 @@ echo -e "${GREEN}SSH tunnel established (port ${TUNNEL_LOCAL_PORT})!${NC}"
 # Step 2: Start local proxy
 echo -e "${YELLOW}Starting local proxy...${NC}"
 
-python3 "${SCRIPT_DIR}/claude-argo-proxy.py" &
+python3 "${SCRIPT_DIR}/claude-argo-proxy.py" \
+    --listen-port ${PROXY_PORT} \
+    --target-port ${TUNNEL_LOCAL_PORT} &
 PROXY_PID=$!
 
 sleep 2
