@@ -2,15 +2,15 @@
 
 # Configuration
 REMOTE_HOST=homes-gce #"homes.cels.anl.gov"
-TUNNEL_LOCAL_PORT=8182
-TUNNEL_REMOTE_HOST="apps.inside.anl.gov"
+TUNNEL_LOCAL_PORT=8282
+TUNNEL_REMOTE_HOST="apps-dev.inside.anl.gov"
 TUNNEL_REMOTE_PORT=443
-PROXY_PORT=8183
-CLAUDE_EXECUTABLE="${CLAUDE_EXECUTABLE:-claude}"
+PROXY_PORT=8283
+OPENCODE_EXECUTABLE="${OPENCODE_EXECUTABLE:-opencode}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # SSH ControlMaster settings
-CONTROL_PATH="/tmp/ssh-argo-claude-$$"
+CONTROL_PATH="/tmp/ssh-argo-opencode-$$"
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -45,7 +45,7 @@ cleanup() {
 # Trap Ctrl+C and other exit signals
 trap cleanup SIGINT SIGTERM EXIT
 
-echo -e "${GREEN}Starting Argonne Claude setup...${NC}"
+echo -e "${GREEN}Starting Argonne opencode setup...${NC}"
 
 # Check if tunnel port is already in use; auto-clean stale tunnels from prior runs
 if lsof -i :${TUNNEL_LOCAL_PORT} >/dev/null 2>&1; then
@@ -82,7 +82,7 @@ echo -e "${GREEN}SSH tunnel established (port ${TUNNEL_LOCAL_PORT})!${NC}"
 # Step 2: Start local proxy
 echo -e "${YELLOW}Starting local proxy...${NC}"
 
-python3 "${SCRIPT_DIR}/claude-argo-proxy.py" \
+python3 "${SCRIPT_DIR}/opencode-argo-proxy.py" \
     --listen-port ${PROXY_PORT} \
     --target-port ${TUNNEL_LOCAL_PORT} &
 PROXY_PID=$!
@@ -95,12 +95,10 @@ if ! kill -0 ${PROXY_PID} 2>/dev/null; then
 fi
 
 echo -e "${GREEN}Local proxy running (port ${PROXY_PORT})!${NC}"
+echo -e "${YELLOW}Point your opencode config baseURL to: http://127.0.0.1:${PROXY_PORT}/argoapi/v1${NC}"
 
-# Step 3: Launch Claude Code
-echo -e "${GREEN}Launching Claude Code...${NC}"
-ANTHROPIC_BASE_URL="http://127.0.0.1:${PROXY_PORT}/argoapi/" \
-    ANTHROPIC_AUTH_TOKEN=${ARGO_USER:-$USER} \
-    CLAUDE_CODE_SKIP_ANTHROPIC_AUTH=1 \
-    ${CLAUDE_EXECUTABLE}
+# Step 3: Launch opencode
+echo -e "${GREEN}Launching opencode...${NC}"
+${OPENCODE_EXECUTABLE}
 
 # The cleanup function will be called automatically by the trap on exit
